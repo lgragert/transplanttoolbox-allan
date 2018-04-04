@@ -32,7 +32,7 @@ allele_frequencies = {}
 
 ### Dictionary with alleles and equivalent antigens
 
-UNOS_conversion_table_filename = "/transplanttoolbox_allan/UNOS_conversion_table_with_rules.csv"
+UNOS_conversion_table_filename = "./UNOS_conversion_table_with_rules.csv"
 
 #UNOS_conversion_table_filename = data
 UNOS_conversion_table_file = open(UNOS_conversion_table_filename, 'r')
