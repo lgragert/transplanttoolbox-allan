@@ -1,0 +1,217 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>transplanttoolbox_allan package &#8212; transplanttoolbox-allan 1.0.0.7 documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="prev" title="transplanttoolbox_allan" href="modules.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <div class="section" id="transplanttoolbox-allan-package">
+<h1>transplanttoolbox_allan package<a class="headerlink" href="#transplanttoolbox-allan-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="module-transplanttoolbox_allan.conversion_functions">
+<span id="transplanttoolbox-allan-conversion-functions-module"></span><h2>transplanttoolbox_allan.conversion_functions module<a class="headerlink" href="#module-transplanttoolbox_allan.conversion_functions" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.allele_code_ags">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">allele_code_ags</code><span class="sig-paren">(</span><em>allele_codes_list</em>, <em>pop</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#allele_code_ags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.allele_code_ags" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.convert_allele_list_to_ags">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">convert_allele_list_to_ags</code><span class="sig-paren">(</span><em>hla_allele_list</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#convert_allele_list_to_ags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.convert_allele_list_to_ags" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function can be called if a list of alleles has to be converted to antigens. Input format is a list and
+the corresponding antigens and rules will be printed out</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.convert_allele_to_ag">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">convert_allele_to_ag</code><span class="sig-paren">(</span><em>allele</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#convert_allele_to_ag"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.convert_allele_to_ag" title="Permalink to this definition">¶</a></dt>
+<dd><p>This function should be called when antigen conversion has to be done for a single allele. Enter an IMGT/HLA allele as a  string
+input and the get the coressponding antigen as per UNOS rules. Also if the antigen is Bw4/6 is also indicated.
+The rule applied for the conversion is printed out with every input</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.genotype_ags">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">genotype_ags</code><span class="sig-paren">(</span><em>genotype_list</em>, <em>pop</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#genotype_ags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.genotype_ags" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.gl_string_ags">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">gl_string_ags</code><span class="sig-paren">(</span><em>gl_string</em>, <em>pop</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#gl_string_ags"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.gl_string_ags" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.main">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">main</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#main"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.main" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main entry point allowing external calls</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em>]</em>) – command line parameter list</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.parse_args">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">parse_args</code><span class="sig-paren">(</span><em>args</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#parse_args"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.parse_args" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse command line parameters</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>args</strong> (<em>[</em><a class="reference external" href="https://docs.python.org/3.6/library/stdtypes.html#str" title="(in Python v3.6)"><em>str</em></a><em>]</em>) – command line parameters as list of strings</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">command line parameters namespace</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Return type:</th><td class="field-body"><a class="reference external" href="https://docs.python.org/3.6/library/argparse.html#argparse.Namespace" title="(in Python v3.6)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">argparse.Namespace</span></code></a></td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.run">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">run</code><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#run"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Entry point for console_scripts</p>
+</dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.conversion_functions.setup_logging">
+<code class="descclassname">transplanttoolbox_allan.conversion_functions.</code><code class="descname">setup_logging</code><span class="sig-paren">(</span><em>loglevel</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/conversion_functions.html#setup_logging"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.conversion_functions.setup_logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Setup basic logging</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>loglevel</strong> (<a class="reference external" href="https://docs.python.org/3.6/library/functions.html#int" title="(in Python v3.6)"><em>int</em></a>) – minimum loglevel for emitting messages</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+<div class="section" id="module-transplanttoolbox_allan.hla">
+<span id="transplanttoolbox-allan-hla-module"></span><h2>transplanttoolbox_allan.hla module<a class="headerlink" href="#module-transplanttoolbox_allan.hla" title="Permalink to this headline">¶</a></h2>
+<dl class="function">
+<dt id="transplanttoolbox_allan.hla.allele_truncate">
+<code class="descclassname">transplanttoolbox_allan.hla.</code><code class="descname">allele_truncate</code><span class="sig-paren">(</span><em>allele</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/hla.html#allele_truncate"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.hla.allele_truncate" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.hla.expand_ac">
+<code class="descclassname">transplanttoolbox_allan.hla.</code><code class="descname">expand_ac</code><span class="sig-paren">(</span><em>allele_code</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/hla.html#expand_ac"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.hla.expand_ac" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.hla.locus_string_geno_list">
+<code class="descclassname">transplanttoolbox_allan.hla.</code><code class="descname">locus_string_geno_list</code><span class="sig-paren">(</span><em>locus_string</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/hla.html#locus_string_geno_list"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.hla.locus_string_geno_list" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="function">
+<dt id="transplanttoolbox_allan.hla.single_locus_allele_codes_genotype">
+<code class="descclassname">transplanttoolbox_allan.hla.</code><code class="descname">single_locus_allele_codes_genotype</code><span class="sig-paren">(</span><em>allele_code_pair_list</em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/transplanttoolbox_allan/hla.html#single_locus_allele_codes_genotype"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#transplanttoolbox_allan.hla.single_locus_allele_codes_genotype" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</div>
+<div class="section" id="module-transplanttoolbox_allan">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-transplanttoolbox_allan" title="Permalink to this headline">¶</a></h2>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="../index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">transplanttoolbox_allan package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-transplanttoolbox_allan.conversion_functions">transplanttoolbox_allan.conversion_functions module</a></li>
+<li><a class="reference internal" href="#module-transplanttoolbox_allan.hla">transplanttoolbox_allan.hla module</a></li>
+<li><a class="reference internal" href="#module-transplanttoolbox_allan">Module contents</a></li>
+</ul>
+</li>
+</ul>
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">transplanttoolbox_allan</a><ul>
+      <li>Previous: <a href="modules.html" title="previous chapter">transplanttoolbox_allan</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="../_sources/api/transplanttoolbox_allan.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, NavchetanKaur.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+      |
+      <a href="../_sources/api/transplanttoolbox_allan.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,729 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>transplanttoolbox_allan.conversion_functions &#8212; transplanttoolbox-allan 1.0.0.7 documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for transplanttoolbox_allan.conversion_functions</h1><div class="highlight"><pre>
+<span></span><span class="ch">#! usr/bin/python </span>
+
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="k">import</span> <span class="n">division</span><span class="p">,</span> <span class="n">print_function</span><span class="p">,</span> <span class="n">absolute_import</span>
+<span class="kn">import</span> <span class="nn">argparse</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="c1">#from pkgutil import get_data</span>
+
+<span class="c1">#data = get_data(&#39;transplanttoolbox_allan&#39;, &#39;UNOS_conversion_table_with_rules.csv&#39;)</span>
+
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">requests</span>   
+<span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">glob</span>
+<span class="kn">import</span> <span class="nn">transplanttoolbox_allan.hla</span> 
+<span class="kn">from</span> <span class="nn">transplanttoolbox_allan.hla</span> <span class="k">import</span> <span class="n">allele_truncate</span><span class="p">,</span> <span class="n">locus_string_geno_list</span><span class="p">,</span> <span class="n">expand_ac</span><span class="p">,</span> <span class="n">single_locus_allele_codes_genotype</span>
+
+<span class="kn">from</span> <span class="nn">transplanttoolbox_allan</span> <span class="k">import</span> <span class="n">__version__</span>
+
+<span class="n">__author__</span> <span class="o">=</span> <span class="s2">&quot;Gragert Lab&quot;</span>
+<span class="n">__copyright__</span> <span class="o">=</span> <span class="s2">&quot;Gragert Lab&quot;</span>
+<span class="n">__license__</span> <span class="o">=</span> <span class="s2">&quot;gpl3&quot;</span>
+
+<span class="n">_logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">allele_to_ag_dict</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">population_allele_frequencies</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">allele_frequencies</span> <span class="o">=</span> <span class="p">{}</span>
+
+<span class="c1">### Dictionary with alleles and equivalent antigens</span>
+
+<span class="n">BASE_DIR</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)))</span>
+<span class="n">UNOS_conversion_table_filename</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">BASE_DIR</span><span class="p">,</span><span class="s2">&quot;transplanttoolbox_allan/UNOS_conversion_table_with_rules.csv&quot;</span><span class="p">)</span>
+<span class="n">UNOS_conversion_table_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">UNOS_conversion_table_filename</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">UNOS_conversion_table_file</span><span class="p">:</span>
+	<span class="n">expression_character</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+	<span class="k">if</span> <span class="n">row</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Allele&quot;</span><span class="p">):</span>
+		<span class="k">continue</span> 
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">allele</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">allele_4d</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">allele_truncate</span><span class="p">(</span><span class="n">allele</span><span class="p">)</span>
+		<span class="n">antigen</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">rule</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span> <span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">bw4_6</span> <span class="o">=</span> <span class="n">row</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)[</span><span class="mi">3</span><span class="p">]</span>
+		
+	<span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">]</span> <span class="o">=</span> <span class="n">antigen</span><span class="p">,</span> <span class="n">rule</span><span class="p">,</span> <span class="n">bw4_6</span> 
+	<span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele_4d</span><span class="p">]</span> <span class="o">=</span> <span class="n">antigen</span><span class="p">,</span> <span class="n">rule</span><span class="p">,</span> <span class="n">bw4_6</span>
+
+
+<span class="n">race_list</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;AAFA&quot;</span><span class="p">,</span> <span class="s2">&quot;AFA&quot;</span><span class="p">,</span> <span class="s2">&quot;CAU&quot;</span><span class="p">,</span> <span class="s2">&quot;HIS&quot;</span><span class="p">,</span> <span class="s2">&quot;NAM&quot;</span><span class="p">,</span> <span class="s2">&quot;AFB&quot;</span><span class="p">,</span> <span class="s2">&quot;AINDI&quot;</span><span class="p">,</span> <span class="s2">&quot;API&quot;</span><span class="p">,</span>
+			 <span class="s2">&quot;AISC&quot;</span><span class="p">,</span> <span class="s2">&quot;ALANAM&quot;</span><span class="p">,</span> <span class="s2">&quot;AMIND&quot;</span><span class="p">,</span> <span class="s2">&quot;CARB&quot;</span><span class="p">,</span> <span class="s2">&quot;CARHIS&quot;</span><span class="p">,</span> <span class="s2">&quot;CARIBI&quot;</span><span class="p">,</span> 
+			<span class="s2">&quot;EURCAU&quot;</span><span class="p">,</span> <span class="s2">&quot;FILII&quot;</span><span class="p">,</span> <span class="s2">&quot;HAWI&quot;</span><span class="p">,</span> <span class="s2">&quot;JAPI&quot;</span><span class="p">,</span> <span class="s2">&quot;KORI&quot;</span><span class="p">,</span> <span class="s2">&quot;MENAFC&quot;</span><span class="p">,</span> <span class="s2">&quot;MSWHIS&quot;</span><span class="p">,</span> <span class="s2">&quot;NCHI&quot;</span><span class="p">,</span> <span class="s2">&quot;SCAHIS&quot;</span><span class="p">,</span> <span class="s2">&quot;SCAMB&quot;</span><span class="p">,</span> <span class="s2">&quot;SCSEAI&quot;</span><span class="p">,</span> <span class="s2">&quot;VIET&quot;</span><span class="p">]</span> 
+
+
+
+<span class="k">for</span> <span class="n">pop</span> <span class="ow">in</span> <span class="n">race_list</span><span class="p">:</span>
+	<span class="n">file</span> <span class="o">=</span> <span class="n">BASE_DIR</span> <span class="o">+</span> <span class="s2">&quot;/transplanttoolbox_allan/freqs_6loc/&quot;</span> <span class="o">+</span> <span class="n">pop</span> <span class="o">+</span> <span class="s2">&quot;.ARS.freqs&quot;</span>
+	<span class="n">freq_file</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">file</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span>
+	<span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">freq_file</span><span class="p">:</span>
+		<span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Haplo&quot;</span><span class="p">):</span>
+			<span class="k">continue</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">line_split</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span>
+			<span class="n">allele_list</span> <span class="o">=</span> <span class="n">line_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">count</span> <span class="o">=</span> <span class="n">line_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+			<span class="n">haplotype_frequency</span> <span class="o">=</span> <span class="n">line_split</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+			<span class="n">allele_split</span> <span class="o">=</span> <span class="n">allele_list</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;~&quot;</span><span class="p">)</span>
+
+			<span class="k">for</span> <span class="n">allele</span> <span class="ow">in</span> <span class="n">allele_split</span><span class="p">:</span>
+				<span class="n">allele</span> <span class="o">=</span> <span class="n">allele</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;g&quot;</span><span class="p">)</span>
+				<span class="n">key</span> <span class="o">=</span> <span class="n">pop</span> <span class="o">+</span> <span class="s2">&quot;%&quot;</span> <span class="o">+</span> <span class="n">allele</span>
+				<span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">population_allele_frequencies</span><span class="p">:</span>
+					<span class="n">population_allele_frequencies</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">haplotype_frequency</span><span class="p">)</span>
+				<span class="k">else</span><span class="p">:</span>
+					<span class="n">population_allele_frequencies</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">haplotype_frequency</span><span class="p">)</span>
+
+
+
+
+
+
+
+
+
+
+
+<span class="c1">#for file in glob.glob(&#39;./freqs_6loc/*.freqs&#39;):</span>
+	<span class="c1">#print(file)</span>
+	<span class="c1">#pop = re.split(r&#39;[/ .]&#39;, file)[3]</span>
+	<span class="c1">#print(pop)</span>
+	<span class="c1">#population_allele_frequencies[pop] = {}</span>
+	<span class="c1">#freq_file = open(file, &#39;r&#39;)</span>
+	<span class="c1">#for line in freq_file:</span>
+		<span class="c1">#if line.startswith(&quot;Haplo&quot;):</span>
+			<span class="c1">#continue</span>
+		<span class="c1">#else:</span>
+			
+			<span class="c1">#line_split = line.split(&quot;,&quot;)</span>
+			<span class="c1">#allele_list = line_split[0]</span>
+			<span class="c1">#count = line_split[1]</span>
+			<span class="c1">#haplotype_frequency = line_split[2]</span>
+			<span class="c1">#allele_split = allele_list.split(&quot;~&quot;)</span>
+			<span class="c1">#for allele in allele_split:</span>
+				<span class="c1">#allele = allele.rstrip(&quot;g&quot;)</span>
+				<span class="c1">#if allele in population_allele_frequencies[pop]:</span>
+					<span class="c1">#population_allele_frequencies[pop][allele] += float(haplotype_frequency)</span>
+				<span class="c1">#else:</span>
+					<span class="c1">#population_allele_frequencies[pop][allele] = float(haplotype_frequency)	</span>
+
+
+
+<div class="viewcode-block" id="convert_allele_to_ag"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.convert_allele_to_ag">[docs]</a><span class="k">def</span> <span class="nf">convert_allele_to_ag</span><span class="p">(</span><span class="n">allele</span><span class="p">):</span>
+
+	<span class="sd">&quot;&quot;&quot;This function should be called when antigen conversion has to be done for a single allele. Enter an IMGT/HLA allele as a  string </span>
+<span class="sd">	input and the get the coressponding antigen as per UNOS rules. Also if the antigen is Bw4/6 is also indicated. </span>
+<span class="sd">	The rule applied for the conversion is printed out with every input&quot;&quot;&quot;</span>
+	<span class="n">allele_dict</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="n">allele</span> <span class="o">=</span> <span class="n">allele</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;p P g G&quot;</span><span class="p">)</span>
+	<span class="k">if</span> <span class="n">allele</span> <span class="ow">in</span> <span class="n">allele_to_ag_dict</span><span class="p">:</span>	
+		<span class="n">ag</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">rule</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">bw4_6</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+	
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">ag</span> <span class="o">=</span> <span class="s2">&quot;NA&quot;</span>
+	<span class="n">allele_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">ag</span><span class="p">,</span> <span class="n">bw4_6</span><span class="p">]</span>
+	<span class="k">return</span> <span class="n">allele_dict</span></div>
+
+
+<div class="viewcode-block" id="convert_allele_list_to_ags"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.convert_allele_list_to_ags">[docs]</a><span class="k">def</span> <span class="nf">convert_allele_list_to_ags</span><span class="p">(</span><span class="n">hla_allele_list</span><span class="p">):</span>
+	
+	<span class="sd">&quot;&quot;&quot;This function can be called if a list of alleles has to be converted to antigens. Input format is a list and </span>
+<span class="sd">	the corresponding antigens and rules will be printed out&quot;&quot;&quot;</span>
+	<span class="n">allele_list_dict</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="n">ag_list</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="n">bw4_6_list</span> <span class="o">=</span> <span class="p">[]</span>
+	<span class="k">for</span> <span class="n">allele</span> <span class="ow">in</span> <span class="n">hla_allele_list</span><span class="p">:</span>
+		<span class="n">allele</span> <span class="o">=</span> <span class="n">allele</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;p P g G&quot;</span><span class="p">)</span>
+		<span class="k">if</span> <span class="n">allele</span> <span class="ow">in</span> <span class="n">allele_to_ag_dict</span><span class="p">:</span>
+			<span class="n">ag</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+			<span class="n">rule</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+			<span class="n">ag</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+			<span class="n">rule</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+			<span class="n">bw4_6</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+			<span class="n">ag_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ag</span><span class="p">)</span>
+			<span class="n">bw4_6_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bw4_6</span><span class="p">)</span>
+			
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">ag</span> <span class="o">=</span> <span class="s2">&quot;NA&quot;</span>
+			<span class="n">ag_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ag</span><span class="p">)</span>
+	
+	<span class="n">allele_list_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Allele_list&quot;</span><span class="p">:</span> <span class="n">hla_allele_list</span><span class="p">,</span> <span class="s2">&quot;UNOS antigens&quot;</span><span class="p">:</span> <span class="n">ag_list</span><span class="p">,</span> <span class="s2">&quot;Bw4/6 epitopes&quot;</span><span class="p">:</span> <span class="n">bw4_6_list</span><span class="p">}</span>
+				
+	<span class="k">return</span> <span class="n">allele_list_dict</span></div>
+			
+
+
+<div class="viewcode-block" id="gl_string_ags"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.gl_string_ags">[docs]</a><span class="k">def</span> <span class="nf">gl_string_ags</span><span class="p">(</span><span class="n">gl_string</span><span class="p">,</span> <span class="n">pop</span><span class="p">):</span>
+	<span class="n">gl_dict</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="n">gl_string</span> <span class="o">=</span> <span class="n">gl_string</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;HLA-&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+	<span class="n">locus_split</span> <span class="o">=</span> <span class="n">gl_string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;^&quot;</span><span class="p">)</span>
+
+	<span class="n">ag_freq_1</span> <span class="o">=</span> <span class="mf">0.0</span>
+	<span class="n">ag_freq_2</span> <span class="o">=</span> <span class="mf">0.0</span>
+	<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+
+	<span class="n">ag_list</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+	<span class="n">One_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">Two_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">Three_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">Four_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">Five_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+	<span class="n">Six_locus_typing</span> <span class="o">=</span> <span class="mi">0</span>
+
+	
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+		<span class="n">One_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;One locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  
+
+
+
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+		<span class="n">Two_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Two locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">b_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">b_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">b_locus</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">b_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span> 
+
+
+
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+		<span class="n">Three_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Three locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">b_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">b_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">b_locus</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">b_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">c_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">c_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">c_locus</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">c_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span> <span class="o">+</span> <span class="n">c_ags</span>
+	
+	
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+		<span class="n">Four_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Four locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">b_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">b_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">b_locus</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">b_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">c_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">c_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">c_locus</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">c_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dr_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">dr_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dr_locus</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dr_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span>  <span class="o">+</span> <span class="n">c_ags</span>  <span class="o">+</span> <span class="n">dr_ags</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span><span class="p">:</span>
+		<span class="n">Five_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Five locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">b_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">b_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">b_locus</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">b_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">c_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">c_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">c_locus</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">c_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dr_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">dr_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dr_locus</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dr_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dqb_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">dqb_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dqb_locus</span><span class="p">)</span>
+		<span class="n">dqb_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dqb_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span>  <span class="o">+</span> <span class="n">c_ags</span>   <span class="o">+</span> <span class="n">dr_ags</span>  <span class="o">+</span> <span class="n">dqb_ags</span>
+
+	
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">locus_split</span><span class="p">)</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+		<span class="n">Six_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Six locus typing&quot;</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">a_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">a_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">a_locus</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">a_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">b_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">b_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">b_locus</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">b_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">c_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">c_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">c_locus</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">c_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dr_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">dr_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dr_locus</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dr_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dqb_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">dqb_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dqb_locus</span><span class="p">)</span>
+		<span class="n">dqb_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dqb_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dr345_locus</span> <span class="o">=</span> <span class="n">locus_split</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+		<span class="n">dr345_genotype_list</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">locus_string_geno_list</span><span class="p">(</span><span class="n">dr345_locus</span><span class="p">)</span>
+		<span class="n">dr345_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dr345_genotype_list</span><span class="p">,</span><span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">b_ags</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">c_ags</span>  <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">dr_ags</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">dqb_ags</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">dr345_ags</span>
+
+	<span class="n">ages</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">bw46_list</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">probs</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">gl_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;GL_string&quot;</span> <span class="p">:</span> <span class="n">gl_string</span><span class="p">,</span> <span class="s2">&quot;UNOS antigens&quot;</span><span class="p">:</span> <span class="n">ages</span><span class="p">,</span> <span class="s2">&quot;Bw4/6 epitopes&quot;</span><span class="p">:</span> <span class="n">bw46_list</span><span class="p">,</span> <span class="s2">&quot;Antigen Probablities&quot;</span><span class="p">:</span> <span class="n">probs</span> <span class="p">}</span>
+	<span class="k">return</span> <span class="n">gl_dict</span></div>
+	
+<div class="viewcode-block" id="genotype_ags"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.genotype_ags">[docs]</a><span class="k">def</span> <span class="nf">genotype_ags</span><span class="p">(</span><span class="n">genotype_list</span><span class="p">,</span> <span class="n">pop</span><span class="p">):</span>
+	<span class="n">ag_freq_1</span> <span class="o">=</span> <span class="mf">0.0</span>
+	<span class="n">ag_freq_2</span> <span class="o">=</span> <span class="mf">0.0</span>
+	
+	<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="k">for</span> <span class="n">genotype</span> <span class="ow">in</span> <span class="n">genotype_list</span><span class="p">:</span>
+		<span class="n">allele_1</span> <span class="o">=</span> <span class="n">genotype</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">allele_1</span> <span class="o">=</span> <span class="n">allele_1</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;g p P G&quot;</span><span class="p">)</span>
+		<span class="n">allele_1</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">allele_truncate</span><span class="p">(</span><span class="n">allele_1</span><span class="p">)</span>
+		<span class="n">allele_pop1</span> <span class="o">=</span> <span class="n">pop</span> <span class="o">+</span> <span class="s2">&quot;%&quot;</span> <span class="o">+</span> <span class="n">allele_1</span>
+
+		<span class="n">allele_2</span> <span class="o">=</span> <span class="n">genotype</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">allele_2</span> <span class="o">=</span> <span class="n">allele_2</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;g p P G&quot;</span><span class="p">)</span>
+		<span class="n">allele_2</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">allele_truncate</span><span class="p">(</span><span class="n">allele_2</span><span class="p">)</span>
+		<span class="n">allele_pop2</span> <span class="o">=</span> <span class="n">pop</span> <span class="o">+</span> <span class="s2">&quot;%&quot;</span> <span class="o">+</span> <span class="n">allele_2</span>
+
+
+		<span class="n">ag_1</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele_1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">bw46_1</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele_1</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">ag_2</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele_2</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">bw46_2</span> <span class="o">=</span> <span class="n">allele_to_ag_dict</span><span class="p">[</span><span class="n">allele_2</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+
+		<span class="k">if</span> <span class="n">allele_1</span> <span class="ow">in</span> <span class="n">population_allele_frequencies</span><span class="p">:</span>
+			<span class="n">ag_freq_1</span> <span class="o">=</span> <span class="n">population_allele_frequencies</span><span class="p">[</span><span class="n">allele_pop1</span><span class="p">]</span>
+		<span class="k">if</span> <span class="n">allele_2</span> <span class="ow">in</span> <span class="n">population_allele_frequencies</span><span class="p">:</span>
+			<span class="n">ag_freq_2</span> <span class="o">=</span> <span class="n">population_allele_frequencies</span><span class="p">[</span><span class="n">allele_pop2</span><span class="p">]</span>
+
+		<span class="n">gf</span> <span class="o">=</span> <span class="mi">0</span>
+		<span class="k">if</span> <span class="p">(</span><span class="n">ag_1</span> <span class="o">==</span> <span class="n">ag_2</span><span class="p">):</span>
+			<span class="n">gf</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">ag_freq_1</span><span class="p">)</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">ag_freq_2</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">gf</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">ag_freq_1</span><span class="p">)</span> <span class="o">*</span> <span class="nb">float</span><span class="p">(</span><span class="n">ag_freq_2</span><span class="p">)</span>	
+
+			<span class="n">geno_antigen</span> <span class="o">=</span> <span class="n">ag_1</span> <span class="o">+</span> <span class="s2">&quot;+&quot;</span> <span class="o">+</span> <span class="n">ag_2</span>
+
+		<span class="k">if</span> <span class="n">geno_antigen</span> <span class="ow">in</span> <span class="n">geno_antigen_freq</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+			<span class="n">geno_antigen_freq</span><span class="p">[</span><span class="n">geno_antigen</span><span class="p">]</span> <span class="o">+=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gf</span><span class="p">)</span>
+		<span class="k">else</span><span class="p">:</span>
+			<span class="n">geno_antigen_freq</span><span class="p">[</span><span class="n">geno_antigen</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gf</span><span class="p">)</span>
+
+	<span class="n">TF</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">geno_antigen_freq</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+	<span class="k">if</span> <span class="n">TF</span> <span class="o">==</span> <span class="mf">0.0</span><span class="p">:</span>
+		<span class="n">TF</span> <span class="o">=</span> <span class="mi">1</span>
+	<span class="k">else</span><span class="p">:</span>
+		<span class="n">TF</span> <span class="o">=</span> <span class="n">TF</span>	
+
+		
+	<span class="k">for</span> <span class="n">i</span><span class="p">,</span><span class="n">j</span> <span class="ow">in</span> <span class="n">geno_antigen_freq</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+		<span class="n">ag_probs</span> <span class="o">=</span> <span class="n">j</span><span class="o">/</span><span class="n">TF</span>
+		<span class="n">geno_antigen_freq</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">ag_probs</span>
+
+		
+	<span class="c1">#print(geno_antigen_freq)		</span>
+	<span class="n">sorted_gf</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">geno_antigen_freq</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span> <span class="n">key</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">itemgetter</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">reverse</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+	<span class="c1">#print(sorted_gf)</span>
+	<span class="c1">#if len(sorted_gf) == 1:</span>
+		<span class="c1">#ag_prob = 1</span>
+	<span class="c1">#else:</span>
+		<span class="c1">#antigen_list = sortef_gf[1::2]	</span>
+
+	<span class="n">top_ag_geno</span> <span class="o">=</span> <span class="n">sorted_gf</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">top_gf</span> <span class="o">=</span> <span class="n">sorted_gf</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+	<span class="c1">#print(top_ag_geno)	</span>
+	<span class="n">ag_1</span> <span class="o">=</span> <span class="n">top_ag_geno</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+	<span class="n">ag_2</span> <span class="o">=</span> <span class="n">top_ag_geno</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;+&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>	
+	<span class="c1">#print(ag_1)</span>
+	<span class="c1">#print(ag_2)</span>
+	<span class="n">ag_list</span> <span class="o">=</span> <span class="n">ag_1</span> <span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">ag_2</span>
+	<span class="n">bw46_list</span> <span class="o">=</span> <span class="n">bw46_1</span>	<span class="o">+</span> <span class="s2">&quot;,&quot;</span> <span class="o">+</span> <span class="n">bw46_2</span>
+	<span class="k">return</span> <span class="p">(</span><span class="n">ag_list</span><span class="p">,</span> <span class="n">bw46_list</span><span class="p">,</span> <span class="n">sorted_gf</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="allele_code_ags"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.allele_code_ags">[docs]</a><span class="k">def</span> <span class="nf">allele_code_ags</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">,</span> <span class="n">pop</span><span class="p">):</span>
+
+	<span class="n">ag_freq_1</span> <span class="o">=</span> <span class="mf">0.0</span>
+	<span class="n">ag_freq_2</span> <span class="o">=</span> <span class="mf">0.0</span>
+	<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+	<span class="n">ag_list</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+	
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;One locus typing&quot;</span><span class="p">)</span>
+		<span class="n">One_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  
+
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Two locus typing&quot;</span><span class="p">)</span>
+		<span class="n">Two_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">C_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">C_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">C_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">C_1_code</span><span class="p">,</span> <span class="n">C_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">ccodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">C_codes_pair</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">ccodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">c_ags</span>  
+
+
+
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Three locus typing&quot;</span><span class="p">)</span>
+		<span class="n">Three_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">C_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">C_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">C_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">C_1_code</span><span class="p">,</span> <span class="n">C_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">ccodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">C_codes_pair</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">ccodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">B_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">B_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+		<span class="n">B_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">B_1_code</span><span class="p">,</span> <span class="n">B_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">bcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">B_codes_pair</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">bcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+		
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span>  <span class="o">+</span> <span class="n">c_ags</span>
+
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">8</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Four locus typing&quot;</span><span class="p">)</span>
+		<span class="n">Four_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">C_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">C_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">C_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">C_1_code</span><span class="p">,</span> <span class="n">C_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">ccodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">C_codes_pair</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">ccodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">B_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">B_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+		<span class="n">B_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">B_1_code</span><span class="p">,</span> <span class="n">B_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">bcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">B_codes_pair</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">bcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+			
+		<span class="n">dr_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+		<span class="n">dr_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+		<span class="n">dr_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dr_1_code</span><span class="p">,</span> <span class="n">dr_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">drcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dr_codes_pair</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">drcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span> <span class="o">+</span> <span class="n">c_ags</span>  <span class="o">+</span> <span class="n">dr_ags</span>
+	
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">10</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Five locus typing&quot;</span><span class="p">)</span>
+		<span class="n">Five_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">C_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">C_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">C_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">C_1_code</span><span class="p">,</span> <span class="n">C_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">ccodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">C_codes_pair</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">ccodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">B_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">B_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+		<span class="n">B_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">B_1_code</span><span class="p">,</span> <span class="n">B_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">bcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">B_codes_pair</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">bcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+			
+		<span class="n">dr_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+		<span class="n">dr_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+		<span class="n">dr_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dr_1_code</span><span class="p">,</span> <span class="n">dr_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">drcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dr_codes_pair</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">drcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>	
+		
+		<span class="n">dqb_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+		<span class="n">dqb_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">9</span><span class="p">]</span>
+		<span class="n">dqb_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dqb_1_code</span><span class="p">,</span> <span class="n">dqb_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dqbcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dqb_codes_pair</span><span class="p">)</span>
+		<span class="n">dqb_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dqbcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span>  <span class="o">+</span> <span class="n">c_ags</span> <span class="o">+</span> <span class="n">dr_ags</span>  <span class="o">+</span> <span class="n">dqb_ags</span>
+				
+	<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">allele_codes_list</span><span class="p">)</span> <span class="o">==</span> <span class="mi">12</span><span class="p">:</span>
+		<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Six locus typing&quot;</span><span class="p">)</span>
+		<span class="n">Six_locus_typing</span> <span class="o">=</span> <span class="mi">1</span>
+		<span class="n">A_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+		<span class="n">A_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+		<span class="n">A_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">A_1_code</span><span class="p">,</span> <span class="n">A_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">acodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">A_codes_pair</span><span class="p">)</span>
+		<span class="n">a_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">acodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">C_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+		<span class="n">C_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">3</span><span class="p">]</span>
+		<span class="n">C_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">C_1_code</span><span class="p">,</span> <span class="n">C_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">ccodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">C_codes_pair</span><span class="p">)</span>
+		<span class="n">c_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">ccodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+
+		<span class="n">B_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">4</span><span class="p">]</span>
+		<span class="n">B_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">5</span><span class="p">]</span>
+		<span class="n">B_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">B_1_code</span><span class="p">,</span> <span class="n">B_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">bcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">B_codes_pair</span><span class="p">)</span>
+		<span class="n">b_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">bcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+			
+		<span class="n">dr_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">6</span><span class="p">]</span>
+		<span class="n">dr_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">7</span><span class="p">]</span>
+		<span class="n">dr_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dr_1_code</span><span class="p">,</span> <span class="n">dr_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">drcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dr_codes_pair</span><span class="p">)</span>
+		<span class="n">dr_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">drcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>	
+		
+		<span class="n">dqb_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">8</span><span class="p">]</span>
+		<span class="n">dqb_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">9</span><span class="p">]</span>
+		<span class="n">dqb_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dqb_1_code</span><span class="p">,</span> <span class="n">dqb_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dqbcodes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dqb_codes_pair</span><span class="p">)</span>
+		<span class="n">dqb_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dqbcodes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>
+							
+
+		<span class="n">dr345_1_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">10</span><span class="p">]</span>
+		<span class="n">dr345_2_code</span> <span class="o">=</span> <span class="n">allele_codes_list</span><span class="p">[</span><span class="mi">11</span><span class="p">]</span>
+		<span class="n">dr345_codes_pair</span> <span class="o">=</span> <span class="p">[</span><span class="n">dr345_1_code</span><span class="p">,</span> <span class="n">dr345_2_code</span><span class="p">]</span>
+		<span class="n">geno_antigen_freq</span> <span class="o">=</span> <span class="p">{}</span>
+		<span class="n">dr345codes_genotype</span> <span class="o">=</span> <span class="n">transplanttoolbox_allan</span><span class="o">.</span><span class="n">hla</span><span class="o">.</span><span class="n">single_locus_allele_codes_genotype</span><span class="p">(</span><span class="n">dr345_codes_pair</span><span class="p">)</span>
+		<span class="n">dr345_ags</span> <span class="o">=</span> <span class="n">genotype_ags</span><span class="p">(</span><span class="n">dr345codes_genotype</span><span class="p">,</span> <span class="n">pop</span><span class="p">)</span>			
+
+
+		<span class="n">ag_list</span> <span class="o">=</span> <span class="n">a_ags</span>  <span class="o">+</span> <span class="n">b_ags</span>  <span class="o">+</span> <span class="n">c_ags</span>  <span class="o">+</span> <span class="n">dr_ags</span>  <span class="o">+</span> <span class="n">dqb_ags</span>  <span class="o">+</span> <span class="n">dr345_ags</span>
+
+
+	<span class="n">ages</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">0</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">bw46_list</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">probs</span> <span class="o">=</span> <span class="n">ag_list</span><span class="p">[</span><span class="mi">2</span><span class="p">::</span><span class="mi">3</span><span class="p">]</span>
+	<span class="n">al_dict</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Allele Codes&quot;</span> <span class="p">:</span> <span class="n">allele_codes_list</span><span class="p">,</span> <span class="s2">&quot;Antigens&quot;</span><span class="p">:</span> <span class="n">ages</span><span class="p">,</span> <span class="s2">&quot;Bw4/6 epitopes&quot;</span><span class="p">:</span> <span class="n">bw46_list</span><span class="p">,</span> <span class="s2">&quot;Antigen Probablities&quot;</span><span class="p">:</span> <span class="n">probs</span><span class="p">}</span>
+	
+	<span class="k">return</span> <span class="n">al_dict</span>	</div>
+	
+<div class="viewcode-block" id="parse_args"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.parse_args">[docs]</a><span class="k">def</span> <span class="nf">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Parse command line parameters</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      args ([str]): command line parameters as list of strings</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">      :obj:`argparse.Namespace`: command line parameters namespace</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">parser</span> <span class="o">=</span> <span class="n">argparse</span><span class="o">.</span><span class="n">ArgumentParser</span><span class="p">(</span>
+        <span class="n">description</span><span class="o">=</span><span class="s2">&quot;Just a Fibonnaci demonstration&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;--version&#39;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s1">&#39;version&#39;</span><span class="p">,</span>
+        <span class="n">version</span><span class="o">=</span><span class="s1">&#39;allan </span><span class="si">{ver}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">ver</span><span class="o">=</span><span class="n">__version__</span><span class="p">))</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;n&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;n-th Fibonacci number&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;INT&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;-v&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;--verbose&#39;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;loglevel&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;set loglevel to INFO&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_const&#39;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">add_argument</span><span class="p">(</span>
+        <span class="s1">&#39;-vv&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;--very-verbose&#39;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;loglevel&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;set loglevel to DEBUG&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s1">&#39;store_const&#39;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">DEBUG</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parser</span><span class="o">.</span><span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="setup_logging"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.setup_logging">[docs]</a><span class="k">def</span> <span class="nf">setup_logging</span><span class="p">(</span><span class="n">loglevel</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Setup basic logging</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      loglevel (int): minimum loglevel for emitting messages</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">logformat</span> <span class="o">=</span> <span class="s2">&quot;[</span><span class="si">%(asctime)s</span><span class="s2">] </span><span class="si">%(levelname)s</span><span class="s2">:</span><span class="si">%(name)s</span><span class="s2">:</span><span class="si">%(message)s</span><span class="s2">&quot;</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">loglevel</span><span class="p">,</span> <span class="n">stream</span><span class="o">=</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span>
+                        <span class="nb">format</span><span class="o">=</span><span class="n">logformat</span><span class="p">,</span> <span class="n">datefmt</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Main entry point allowing external calls</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">      args ([str]): command line parameter list</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">args</span> <span class="o">=</span> <span class="n">parse_args</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+    <span class="n">setup_logging</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">loglevel</span><span class="p">)</span>
+    <span class="n">_logger</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">&quot;Starting crazy calculations...&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;The </span><span class="si">{}</span><span class="s2">-th Fibonacci number is </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">n</span><span class="p">,</span> <span class="n">fib</span><span class="p">(</span><span class="n">args</span><span class="o">.</span><span class="n">n</span><span class="p">)))</span>
+    <span class="n">_logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Script ends here&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="run"><a class="viewcode-back" href="../../api/transplanttoolbox_allan.html#transplanttoolbox_allan.conversion_functions.run">[docs]</a><span class="k">def</span> <span class="nf">run</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Entry point for console_scripts</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;__main__&quot;</span><span class="p">:</span>
+    <span class="n">run</span><span class="p">()</span>
+    
+
+</pre></div>
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper"><div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2018, NavchetanKaur.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.7.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.10</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,5 @@
+
+[console_scripts]
+# script_name = transplanttoolbox_allan.module:function
+# For example:
+# fibonacci = transplanttoolbox_allan.skeleton:run
